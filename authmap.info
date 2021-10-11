@@ -1,0 +1,6 @@
+name = Authmap
+description = Provides the authmap table and functions removed from Backdrop Core. This module is often used with other modules providing Single Sign-On (SSO).
+backdrop = 1.x
+type = module
+package = Development
+tags[] = Account Management
