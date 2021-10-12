@@ -7,6 +7,9 @@
  * [DX] Contrib modules broken because of the removal of the authmap table.
  * https://github.com/backdrop/backdrop-issues/issues/2377
  *
+ * See change record when it was removed from Drupal 8.x and inherited by
+ * Backdrop. https://www.drupal.org/node/1863874.
+ *
  */
 
  /**
