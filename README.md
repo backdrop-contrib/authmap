@@ -41,7 +41,14 @@ Current Maintainers
 -------------------
 
 - [Joel Steidl](https://github.com/joelsteidl).
+- [Laryn Kragt Bakker](https://github.com/laryn).
 - Seeking additional maintainers.
+
+Credits
+-------------------
+
+ - Ported to Backdrop CMS from Drupal 7 core by [Joel Steidl](https://github.com/joelsteidl).
+ - Backdrop version supported by [Aten Design Group](https://atendesigngroup.com).
 
 License
 -------
