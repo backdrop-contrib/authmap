@@ -43,7 +43,15 @@ function authmap_external_load($authname) {
   ))
     ->fetchField();
   if ($uid) {
-    return user_load($uid);
+    $account = user_load($uid);
+    if ($account) {
+      return $account;
+    }
+    else {
+      // The user was deleted without cleaning up the authmap table.
+      authmap_remove_authmap($authname);
+      return FALSE;
+    }
   }
   else {
     return FALSE;
@@ -120,4 +128,35 @@ function authmap_external_login_register($name, $module) {
   // Log user in.
   $form_state['uid'] = $account->uid;
   user_login_submit(array(), $form_state);
+}
+
+/**
+ * Remove an authname entry.
+ *
+ * @param string $authname
+ *   The external authentication username.
+ */
+function authmap_remove_authmap(string $authname='') {
+  if (!empty($authname)) {
+    db_delete('authmap')
+      ->condition('authname', $authname)
+      ->execute();
+  }
+}
+
+/**
+ * Implements hook_user_delete().
+ *
+ * Remove the authname entry when a user is deleted.
+ *
+ * @param User $account
+ *  The user object being deleted.
+ */
+function authmap_user_delete($account) {
+  $authname = db_query("SELECT authname FROM {authmap} WHERE uid = :uid", array(
+    ':uid' => $account->uid,
+  ))->fetchField();
+  if ($authname) {
+    authmap_remove_authmap($authname);
+  }
 }
