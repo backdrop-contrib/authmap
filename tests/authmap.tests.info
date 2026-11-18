@@ -1,0 +1,5 @@
+[UserAuthmapCaseSensitivityTestCase]
+name = Authmap case sensitivity
+description = Check case-sensitive matching of authentication names.
+group = Authmap
+file = authmap.test

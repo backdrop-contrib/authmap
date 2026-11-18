@@ -29,6 +29,7 @@ function authmap_schema() {
         'length' => 128,
         'not null' => TRUE,
         'default' => '',
+        'binary' => TRUE,
         'description' => 'Unique authentication name.',
       ),
       'module' => array(
@@ -54,4 +55,52 @@ function authmap_schema() {
     ),
   );
   return $schema;
+}
+
+/**
+ * Make {authmap}.authname case-sensitive.
+ */
+function authmap_update_1101() {
+  // The 'binary' schema flag only has an effect on MySQL and MariaDB. Every
+  // other supported database already compares varchar values case-sensitively
+  // and without ignoring trailing whitespace, so there is nothing to convert.
+  if (Database::getConnection()->databaseType() != 'mysql') {
+    return;
+  }
+
+  // Under a case-insensitive collation the UNIQUE key on authname prevents
+  // rows that differ only by case or by trailing whitespace, so a stock site
+  // cannot hold any. A site that dropped that key can, and converting the
+  // column would then leave rows that authenticate the wrong account. Refuse
+  // to convert rather than guess which row is the legitimate one: this runs
+  // before any schema change, so the site is left untouched and the update can
+  // be re-run once the duplicates have been resolved by hand.
+  $collisions = db_query('SELECT authname FROM {authmap} GROUP BY authname HAVING COUNT(*) > 1')->fetchCol();
+  if ($collisions) {
+    $sample = array_slice($collisions, 0, 10);
+    $message = format_plural(count($collisions),
+      'The authmap table holds an authentication name that differs from another one only by letter case or trailing whitespace, so the column cannot be made case-sensitive yet.',
+      'The authmap table holds @count authentication names that differ from other ones only by letter case or trailing whitespace, so the column cannot be made case-sensitive yet.');
+    $message .= ' ' . t('Decide which account each name belongs to, delete the rows that do not belong, and run this update again.');
+    $message .= ' ' . format_string('Affected: !list!more', array(
+        '!list' => implode(', ', array_map('check_plain', $sample)),
+        '!more' => count($collisions) > count($sample) ? ', ...' : '',
+      ));
+    throw new BackdropUpdateException($message);
+  }
+
+  // The UNIQUE key has to go before the column can be redefined, otherwise
+  // MySQL rebuilds the index under the old collation.
+  if (db_index_exists('authmap', 'authname')) {
+    db_drop_unique_key('authmap', 'authname');
+  }
+  db_change_field('authmap', 'authname', 'authname', array(
+    'type' => 'varchar',
+    'length' => 128,
+    'not null' => TRUE,
+    'default' => '',
+    'binary' => TRUE,
+    'description' => 'Unique authentication name.',
+  ));
+  db_add_unique_key('authmap', 'authname', array('authname'));
 }

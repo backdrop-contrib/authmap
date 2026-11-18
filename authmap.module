@@ -21,10 +21,19 @@
  *   An associative array with module as key and username as value.
  */
 function authmap_get_authmaps($authname = NULL) {
-  $authmaps = db_query("SELECT module, authname FROM {authmap} WHERE authname = :authname", array(
+  $authmaps = array();
+  $result = db_query("SELECT module, authname FROM {authmap} WHERE authname = :authname", array(
     ':authname' => $authname,
-  ))
-    ->fetchAllKeyed();
+  ));
+
+  // Discard rows the database matched case-insensitively; see
+  // authmap_external_load().
+  foreach ($result as $row) {
+    if ($row->authname === (string) $authname) {
+      $authmaps[$row->module] = $row->authname;
+    }
+  }
+
   return count($authmaps) ? $authmaps : 0;
 }
 
@@ -38,10 +47,21 @@ function authmap_get_authmaps($authname = NULL) {
  *   A fully-loaded user object if the user is found or FALSE if not found.
  */
 function authmap_external_load($authname) {
-  $uid = db_query("SELECT uid FROM {authmap} WHERE authname = :authname", array(
+  $result = db_query("SELECT uid, authname FROM {authmap} WHERE authname = :authname", array(
     ':authname' => $authname,
-  ))
-    ->fetchField();
+  ));
+
+  // {authmap}.authname is declared binary, so the comparison above is
+  // case-sensitive, but now 'kathy ' matches 'kathy'. Match strings exactly
+  // for extra security.
+  $uid = FALSE;
+  foreach ($result as $row) {
+    if ($row->uid && $row->authname === (string) $authname) {
+      $uid = $row->uid;
+      break;
+    }
+  }
+
   if ($uid) {
     $account = user_load($uid);
     if ($account) {
@@ -138,6 +158,7 @@ function authmap_external_login_register($name, $module) {
  */
 function authmap_remove_authmap(string $authname='') {
   if (!empty($authname)) {
+    // Remove any rows with(out) trailing spaces; see authmap_external_load().
     db_delete('authmap')
       ->condition('authname', $authname)
       ->execute();
